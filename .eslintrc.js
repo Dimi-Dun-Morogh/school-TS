@@ -6,6 +6,7 @@ module.exports = {
     rules: {
         'no-console': 'off',
         'import/prefer-default-export': 'off',
-        // 'max-len': '120'
+         'max-len': 'warn',
+         'no-continue': 'off'
     }
 };

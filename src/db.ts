@@ -1,6 +1,7 @@
 import mysql from 'mysql';
 import config from './config';
-import { logger } from './utils';
+import { logger, fixBracketsJSON } from './utils';
+import { LessonCreator, TeacherCreator } from './models';
 
 const params = {
   user: config.mysql.user,
@@ -33,21 +34,20 @@ const Query = async (connection: mysql.Connection, query: string) => new Promise
   });
 });
 
-/* const query = 'INSERT INTO lesson (teacher_id, classRoom_id, day,
-   time, lessonName) VALUES ("2", "2", "friday", "17:00", "Mathematics")';
-*/
-const CreateItem = async (table: string, itemObj: object) => {
+const CreateItem = async (table: string, itemObj: object): Promise<any> => {
   const keys = `(${Object.keys(itemObj).join(', ')})`;
-  const values = Object.values(itemObj).reduce(
-    (acc, item) => `${acc}"${item}", `,
+  let values = Object.values(itemObj).reduce(
+    (acc, item) => `${acc}"${Array.isArray(item) ? JSON.stringify(item) : item}", `,
     '',
   );
+  values = fixBracketsJSON(values);
   const query = `INSERT INTO ${table} ${keys} VALUES (${values.slice(0, -2)})`;
   try {
     const connection = await ConnectDb();
-    await Query(connection, query);
+    const newItem = await Query(connection, query);
     logger.info(NAMESPACE, `creating item for table ${table}`, itemObj);
     connection.end();
+    return newItem;
   } catch (error) {
     logger.info(NAMESPACE, error.message, error);
   }
@@ -69,16 +69,26 @@ const ReadItems = async (table: string) => {
   }
 };
 
-const UpdateItem = async (table: string, id: string | number, itemObj: object) => {
+const UpdateItem = async (
+  table: string,
+  id: string | number,
+  itemObj: object,
+) => {
   try {
     const query = Object.entries(itemObj).reduce(
       (acc, [key, value]) => `${acc}${key} = "${value}", `,
       '',
     );
     const connection = await ConnectDb();
-    await Query(connection, `UPDATE ${table} SET ${query.slice(0, -2)} WHERE id = "${id}"`);
+    await Query(
+      connection,
+      `UPDATE ${table} SET ${query.slice(0, -2)} WHERE id = "${id}"`,
+    );
     logger.info(NAMESPACE, `update item ${table}`, itemObj);
-    const updated = await Query(connection, `SELECT  * FROM ${table} WHERE id = ${id}`);
+    const updated = await Query(
+      connection,
+      `SELECT  * FROM ${table} WHERE id = ${id}`,
+    );
     logger.info(NAMESPACE, 'item updated', JSON.stringify(updated));
     connection.end();
   } catch (error) {
@@ -86,10 +96,13 @@ const UpdateItem = async (table: string, id: string | number, itemObj: object) =
   }
 };
 
-const DeleteItem = async (table:string, id: string|number) => {
+const DeleteItem = async (table: string, id: string | number) => {
   try {
     const connection = await ConnectDb();
-    const deleted = await Query(connection, `DELETE from ${table} WHERE id = ${id}`);
+    const deleted = await Query(
+      connection,
+      `DELETE from ${table} WHERE id = ${id}`,
+    );
     logger.info(NAMESPACE, `deleting id ${id} from ${table}`);
     connection.end();
     logger.info(NAMESPACE, 'delete', deleted);
@@ -98,6 +111,28 @@ const DeleteItem = async (table:string, id: string|number) => {
   }
 };
 
+const CreateLesson: LessonCreator = async (lesson: Object) => {
+  const createdLesson = await CreateItem('lesson', lesson);
+  return createdLesson;
+};
+
+const CreateTeacher: TeacherCreator = async (teacher: Object) => {
+  const newTeacher = await CreateItem('teacher', teacher);
+  return newTeacher;
+};
+
+const getAllTeachers = () => {
+  logger.info(NAMESPACE, 'getAllTeachers');
+  ReadItems('teacher');
+};
+
 export {
-  ConnectDb, CreateItem, ReadItems, UpdateItem, DeleteItem,
+  ConnectDb,
+  CreateItem,
+  ReadItems,
+  UpdateItem,
+  DeleteItem,
+  CreateLesson,
+  CreateTeacher,
+  getAllTeachers,
 };
