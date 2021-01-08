@@ -1,7 +1,7 @@
 import mysql from 'mysql';
 import config from './config';
 import { logger, fixBracketsJSON } from './utils';
-import { LessonCreator, TeacherCreator } from './models';
+import { Teacher, ClassRoom, Lesson } from './models';
 
 const params = {
   user: config.mysql.user,
@@ -10,7 +10,7 @@ const params = {
   database: config.mysql.database,
 };
 
-const NAMESPACE = 'DATABASE';
+const NAMESPACE = 'db.ts';
 
 const ConnectDb = async () => new Promise<mysql.Connection>((resolve, reject) => {
   const connection = mysql.createConnection(params);
@@ -24,7 +24,8 @@ const ConnectDb = async () => new Promise<mysql.Connection>((resolve, reject) =>
   });
 });
 
-const Query = async (connection: mysql.Connection, query: string) => new Promise((resolve, reject) => {
+const Query = async (connection: mysql.Connection, query: string) => new
+Promise((resolve, reject) => {
   connection.query(query, connection, (error, result) => {
     if (error) {
       reject(error);
@@ -34,7 +35,7 @@ const Query = async (connection: mysql.Connection, query: string) => new Promise
   });
 });
 
-const CreateItem = async (table: string, itemObj: object): Promise<any> => {
+const CreateItem = async (table: string, itemObj: Object) => {
   const keys = `(${Object.keys(itemObj).join(', ')})`;
   let values = Object.values(itemObj).reduce(
     (acc, item) => `${acc}"${Array.isArray(item) ? JSON.stringify(item) : item}", `,
@@ -96,7 +97,7 @@ const UpdateItem = async (
   }
 };
 
-const DeleteItem = async (table: string, id: string | number) => {
+const DeleteItem = async (table: string, id: string | number) :Promise<any> => {
   try {
     const connection = await ConnectDb();
     const deleted = await Query(
@@ -111,12 +112,17 @@ const DeleteItem = async (table: string, id: string | number) => {
   }
 };
 
-const CreateLesson: LessonCreator = async (lesson: Object) => {
+const CreateLesson = async (lesson:Lesson) => {
   const createdLesson = await CreateItem('lesson', lesson);
   return createdLesson;
 };
 
-const CreateTeacher: TeacherCreator = async (teacher: Object) => {
+const CreateClassRoom = async (classNumb :ClassRoom) => {
+  const createdClassRoom = await CreateItem('classroom', classNumb);
+  return createdClassRoom;
+};
+
+const CreateTeacher = async (teacher: Teacher) => {
   const newTeacher = await CreateItem('teacher', teacher);
   return newTeacher;
 };
@@ -124,6 +130,37 @@ const CreateTeacher: TeacherCreator = async (teacher: Object) => {
 const getAllTeachers = () => {
   logger.info(NAMESPACE, 'getAllTeachers');
   ReadItems('teacher');
+};
+
+const getTargetMathTeachers = async () => {
+  try {
+    const connection = await ConnectDb();
+
+    const teacherIds = await Query(
+      connection,
+      'SELECT teacher_id FROM lesson WHERE day = "Thursday" AND lessonName = "Mathematics" AND classRoom_id = 1 AND time BETWEEN "08:30" AND "14:30"',
+    ).then((res) => JSON.parse(JSON.stringify(res)));
+
+    logger.info(
+      NAMESPACE,
+      'SELECT teacher_id FROM lesson WHERE day = "Thursday" AND lessonName = "Mathematics" AND classRoom_id = 1 AND time BETWEEN "08:30" AND "14:30"',
+    );
+    logger.info(NAMESPACE, 'target math teacher ids', teacherIds);
+
+    const stringOfIds = [...teacherIds].reduce(
+      (acc, { teacher_id }) => `${acc + teacher_id},`,
+      '',
+    );
+
+    const result = await Query(
+      connection,
+      `SELECT * FROM teacher WHERE find_in_set(id, '${stringOfIds}') AND   yearsOfExperience >= 10`,
+    ).then((res) => JSON.parse(JSON.stringify(res)));
+    logger.info(NAMESPACE, 'target math  teachers, exp >=10', result);
+    connection.end();
+  } catch (error) {
+    logger.info(NAMESPACE, error.message, error);
+  }
 };
 
 export {
@@ -134,5 +171,7 @@ export {
   DeleteItem,
   CreateLesson,
   CreateTeacher,
+  CreateClassRoom,
   getAllTeachers,
+  getTargetMathTeachers,
 };

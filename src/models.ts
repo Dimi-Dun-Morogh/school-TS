@@ -2,7 +2,7 @@ interface Teacher {
   age: number;
   sex: string;
   yearsOfExperience: number;
-  canTeachSubjects?: Array<LessonTypes>
+  canTeachSubjects?: Array<LessonTypes>;
   name: string;
 }
 
@@ -28,12 +28,6 @@ enum LessonTypes {
   PHYLOSOPHY = 'Phylosophy',
 }
 
-interface LessonCreator {
-  (lessonObj: Lesson): Promise<LessonCreator>;
-}
-
-interface TeacherCreator {
-  (teacherObj: Teacher): Promise<Object>;
-}
-
-export { LessonCreator, TeacherCreator, LessonTypes };
+export {
+  Teacher, LessonTypes, ClassRoom, Lesson,
+};
