@@ -54,7 +54,7 @@ const CreateItem = async (table: string, itemObj: Object) => {
   }
 };
 
-const ReadItems = async (table: string) => {
+const ReadItems = async (table: string) : Promise<any> => {
   try {
     const connection = await ConnectDb();
     const items = await Query(connection, `SELECT * from ${table}`);
@@ -73,7 +73,7 @@ const ReadItems = async (table: string) => {
 const UpdateItem = async (
   table: string,
   id: string | number,
-  itemObj: object,
+  itemObj: Object,
 ) => {
   try {
     const query = Object.entries(itemObj).reduce(
@@ -112,27 +112,27 @@ const DeleteItem = async (table: string, id: string | number) :Promise<any> => {
   }
 };
 
-const CreateLesson = async (lesson:Lesson) => {
+const CreateLesson = async (lesson:Lesson): Promise<any> => {
   const createdLesson = await CreateItem('lesson', lesson);
   return createdLesson;
 };
 
-const CreateClassRoom = async (classNumb :ClassRoom) => {
+const CreateClassRoom = async (classNumb :ClassRoom): Promise<any> => {
   const createdClassRoom = await CreateItem('classroom', classNumb);
   return createdClassRoom;
 };
 
-const CreateTeacher = async (teacher: Teacher) => {
+const CreateTeacher = async (teacher: Teacher): Promise<any> => {
   const newTeacher = await CreateItem('teacher', teacher);
   return newTeacher;
 };
 
-const getAllTeachers = () => {
+const getAllTeachers = ():void => {
   logger.info(NAMESPACE, 'getAllTeachers');
   ReadItems('teacher');
 };
 
-const getTargetMathTeachers = async () => {
+const getTargetMathTeachers = async () :Promise<void> => {
   try {
     const connection = await ConnectDb();
 
@@ -140,12 +140,6 @@ const getTargetMathTeachers = async () => {
       connection,
       'SELECT teacher_id FROM lesson WHERE day = "Thursday" AND lessonName = "Mathematics" AND classRoom_id = 1 AND time BETWEEN "08:30" AND "14:30"',
     ).then((res) => JSON.parse(JSON.stringify(res)));
-
-    logger.info(
-      NAMESPACE,
-      'SELECT teacher_id FROM lesson WHERE day = "Thursday" AND lessonName = "Mathematics" AND classRoom_id = 1 AND time BETWEEN "08:30" AND "14:30"',
-    );
-    logger.info(NAMESPACE, 'target math teacher ids', teacherIds);
 
     const stringOfIds = [...teacherIds].reduce(
       (acc, { teacher_id }) => `${acc + teacher_id},`,
@@ -156,6 +150,11 @@ const getTargetMathTeachers = async () => {
       connection,
       `SELECT * FROM teacher WHERE find_in_set(id, '${stringOfIds}') AND   yearsOfExperience >= 10`,
     ).then((res) => JSON.parse(JSON.stringify(res)));
+    logger.info(
+      NAMESPACE,
+      'SELECT teacher_id FROM lesson WHERE day = "Thursday" AND lessonName = "Mathematics" AND classRoom_id = 1 AND time BETWEEN "08:30" AND "14:30"',
+    );
+    logger.info(NAMESPACE, 'target math teacher ids', teacherIds);
     logger.info(NAMESPACE, 'target math  teachers, exp >=10', result);
     connection.end();
   } catch (error) {
